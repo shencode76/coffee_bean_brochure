@@ -1,0 +1,281 @@
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title></title>
+<style>
+  body { margin: 0; font-family: sans-serif; }
+  #main-container { display: flex; flex-direction: column; width: 100%; max-width: 1200px; gap: 1px; margin: auto; height: 990px; }
+  #sankey-container { flex: 0 0 50%; }
+  #bar-container { flex: 0 0 50%; position: relative; }
+  #bar-charts { width: 100%; height: 100%; }
+  .node rect { stroke: #555; }
+  .link { fill: none; stroke: #888; stroke-opacity: .5; }
+  .link.highlight { stroke: orange; stroke-opacity: 1; }
+  .bar { cursor: pointer; }
+  .bar-label { font-size: 12px; fill: #000; pointer-events: none; }
+  .chart-title { font-size: 14px; font-weight: bold; }
+</style>
+</head>
+
+<body>
+<div id="main-container">
+  <div id="sankey-container"></div>
+  <div id="bar-container"><div id="bar-charts"></div></div>
+</div>
+
+<script type="module">
+import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
+import { sankeyCircular } from "https://cdn.jsdelivr.net/npm/d3-sankey-circular@0.34.0/+esm";
+import { sankeyLinkHorizontal, sankeyJustify } from "https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/+esm";
+
+const reporterInfo = {
+  Thailand: { color: "#7B3F00"  },
+  "United States": { color: "#ADCAD6"},
+  "Lao PDR": { color: "#FFD23F" }
+};
+const reps = Object.keys(reporterInfo), clean = s => s.trim();
+
+const reporterOrder = ["Thailand", "United States", "Lao PDR"];
+const reporterSpacing = 100;
+
+d3.csv("static/data/combined_all_export.csv").then(raw => {
+  raw.forEach(d => {
+    d.value = +d["Trade Value 1000USD"];
+    d.Quantity = +d.Quantity.replace(/,/g, "");
+    d.Reporter = clean(d.Reporter);
+    d.Partner = clean(d.Partner);
+  });
+
+  const data = raw.filter(d =>
+    d.TradeFlow === "Export" &&
+    reps.includes(d.Reporter) &&
+    d.Partner.toLowerCase() !== "world"
+  );
+
+  const partnerUnit = new Map(
+    d3.rollup(
+      data,
+      vPartner => {
+        const byYear = d3.group(vPartner, d => d.Year);
+        const yearlyPrices = Array.from(byYear, ([year, rows]) => {
+          const val = d3.sum(rows, d => d.value);
+          const qty = d3.sum(rows, d => d.Quantity);
+          return qty ? (val * 1000) / qty : 0;
+        });
+        return d3.mean(yearlyPrices);
+      },
+      d => d.Reporter,
+      d => d.Partner
+    )
+  );
+
+  const reportersData = reps.map(rep => {
+    const rows = data.filter(d => d.Reporter === rep);
+    const top10 = Array.from(
+      d3.rollup(rows, v => d3.sum(v, d => d.value), d => d.Partner)
+    )
+    .sort((a, b) => d3.descending(a[1], b[1]))
+    .slice(0, 10)
+    .map(([p, val]) => ({ partner: p, value: val, unitPrice: partnerUnit.get(rep)?.get(p) || 0 }));
+    return { reporter: rep, partners: top10 };
+  });
+
+  draw(reportersData);
+});
+
+function draw(reportersData) {
+  const nodes = [];
+  const nodeSet = new Set();
+
+
+  reps.forEach(r => {
+    if (!nodeSet.has(r)) {
+      nodes.push({ name: r });
+      nodeSet.add(r);
+    }
+  });
+
+ 
+  reportersData.forEach(r => r.partners.forEach(p => {
+    const pname = reps.includes(p.partner) ? `${p.partner} (as partner)` : p.partner;
+    if (!nodeSet.has(pname)) {
+      nodes.push({ name: pname });
+      nodeSet.add(pname);
+    }
+  }));
+
+  const idx = n => nodes.findIndex(d => d.name === n);
+  const links = [];
+
+
+  reportersData.forEach(r => r.partners.forEach(p => {
+    if (r.reporter !== p.partner) {
+      const pname = reps.includes(p.partner) ? `${p.partner} (as partner)` : p.partner;
+      links.push({ source: idx(r.reporter), target: idx(pname), value: p.value, rep: r.reporter });
+    }
+  }));
+
+  const sW = document.getElementById("sankey-container").clientWidth,
+        sH = document.getElementById("sankey-container").clientHeight;
+
+  const gen = sankeyCircular()
+    .nodeWidth(15)
+    .nodePadding(18)
+    .circularLinkGap(2)
+    .nodeAlign(sankeyJustify)
+    .extent([[1, 1], [sW - 1, sH - 1]]);
+
+  const graph = gen({ nodes: nodes.map(d => ({ ...d })), links });
+
+  graph.nodes.forEach(n => {
+    if (reps.includes(n.name)) {
+      const i = reporterOrder.indexOf(n.name);
+      const h = n.y1 - n.y0 || 20;
+      n.x0 = 10;
+      n.x1 = 25;
+      n.y0 = 50 + i * reporterSpacing;
+      n.y1 = n.y0 + h;
+    }
+  });
+
+  graph.links.forEach(link => {
+    link.y0 = (link.source.y0 + link.source.y1) / 2;
+    link.y1 = (link.target.y0 + link.target.y1) / 2;
+  });
+
+  const svg = d3.select("#sankey-container").append("svg")
+    .attr("width", sW+100).attr("height", sH + 10).append("g").attr("transform", "translate(100, 0)");;
+
+  svg.append("g").selectAll("path").data(graph.links).enter()
+    .append("path").attr("class", "link")
+    .attr("d", sankeyLinkHorizontal())
+    .attr("stroke-width", d => Math.max(1, d.width));
+
+  const nd = svg.append("g").selectAll("g").data(graph.nodes).enter().append("g")
+    .attr("transform", d => `translate(${d.x0},${d.y0})`);
+
+  nd.append("rect")
+    .attr("width", d => d.x1 - d.x0)
+    .attr("height", d => Math.max(4, d.y1 - d.y0))
+    .attr("fill", d => reporterInfo[d.name.replace(" (as partner)", "")]?.color || "#ccc");
+
+  nd.append("text")
+    .attr("x", -6)
+    .attr("text-anchor", "end")
+    .attr("y", d => (d.y1 - d.y0) / 2)
+    .attr("dy", ".35em").attr("font-size", "14px")
+    .text(d => d.name);
+
+  nd.on("mouseover", (event, d) => {
+    if (reps.includes(d.name)) {
+      d3.selectAll(".link").classed("highlight", l => l.rep === d.name);
+      updateBars(d.name);
+    }
+  }).on("mouseout", () => {
+    d3.selectAll(".link").classed("highlight", false);
+  });
+  const extraWidth = 100;
+  const barW = document.getElementById("bar-charts").clientWidth + extraWidth,
+        barH = document.getElementById("bar-charts").clientHeight;
+  const svgBar = d3.select("#bar-charts").append("svg")
+    .attr("width", barW).attr("height", barH).style("overflow", "visible");
+  const m = { top: 20, right: 20, bottom: 60, left: 90 },
+        cW = barW - m.left - m.right,
+        cH = (barH - m.top - m.bottom) / 2 - 20;
+
+  const gVal = svgBar.append("g").attr("transform", `translate(${m.left},${m.top})`);
+  const xVal = d3.scaleBand().range([0, cW]).padding(.1);
+  const yVal = d3.scaleLinear().range([cH, 0]);
+  gVal.append("g").attr("class", "x axis").attr("transform", `translate(0,${cH})`);
+  gVal.append("g").attr("class", "y axis");
+
+  const gP = svgBar.append("g").attr("transform", `translate(${m.left},${m.top + cH + 70})`);
+  const xP = d3.scaleBand().range([0, cW]).padding(.1);
+  const yP = d3.scaleLinear().range([cH, 0]);
+  gP.append("g").attr("class", "x axis").attr("transform", `translate(0,${cH})`);
+  gP.append("g").attr("class", "y axis");
+
+  const pad5 = a => { while (a.length < 5) a.push({ partner: "", value: 0, unitPrice: 0 }); return a; };
+  let currentRep = "Thailand";
+
+  function updateVal(arr) {
+    const top5 = pad5(arr.slice(0, 10));
+    const rename = name => name === "Other Asia, nes" ? "Other Asia" : name;
+    xVal.domain(top5.map(d => rename(d.partner)));
+    yVal.domain([0, d3.max(top5, d => d.value)]);
+    const bars = gVal.selectAll(".bar").data(top5, d => d.partner);
+    bars.enter().append("rect").attr("class", "bar").merge(bars)
+      .transition().duration(300)
+      .attr("x", d => xVal(rename(d.partner)))
+      .attr("width", xVal.bandwidth())
+      .attr("y", d => yVal(d.value))
+      .attr("height", d => cH - yVal(d.value))
+      .attr("fill", reporterInfo[currentRep].color);
+    bars.exit().remove();
+    const labels = gVal.selectAll(".bar-label").data(top5, d => d.partner);
+    labels.enter().append("text").attr("class", "bar-label").merge(labels)
+      .transition().duration(300)
+      .attr("x", d => xVal(rename(d.partner)) + xVal.bandwidth() / 2)
+      .attr("y", d => yVal(d.value) - 5)
+      .attr("text-anchor", "middle")
+      .text(d => d.value.toLocaleString())
+      .attr("font-size", "16px");
+    labels.exit().remove();
+    gVal.select(".x.axis").call(d3.axisBottom(xVal))
+      .selectAll("text").style("font-size", "12px")
+      .attr("font-weight", "bold");
+    gVal.select(".y.axis").call(d3.axisLeft(yVal))
+      .selectAll("text").style("font-size", "12px")
+      .attr("font-weight", "bold");
+    gVal.selectAll(".chart-title").remove();
+    gVal.append("text").attr("class", "chart-title")
+      .attr("x", 0).attr("y", -20)
+      .text(`${currentRep} — Top 10 Export Destination Countries (USD)`);
+  }
+
+  function updatePrice(arr) {
+    const top5 = pad5(arr.slice(0, 10));
+    const rename = name => name === "Other Asia, nes" ? "Other Asia" : name;
+    xP.domain(top5.map(d => rename(d.partner)));
+    yP.domain([0, d3.max(top5, d => d.unitPrice)]);
+    const bars = gP.selectAll(".bar").data(top5, d => d.partner);
+    bars.enter().append("rect").attr("class", "bar").merge(bars)
+      .transition().duration(300)
+      .attr("x", d => xP(rename(d.partner)))
+      .attr("width", xP.bandwidth())
+      .attr("y", d => yP(d.unitPrice))
+      .attr("height", d => cH - yP(d.unitPrice))
+      .attr("fill", reporterInfo[currentRep].color);
+    bars.exit().remove();
+    const labels = gP.selectAll(".bar-label").data(top5, d => d.partner);
+    labels.enter().append("text").attr("class", "bar-label").merge(labels)
+      .transition().duration(300)
+      .attr("x", d => xP(rename(d.partner)) + xP.bandwidth() / 2)
+      .attr("y", d => yP(d.unitPrice) - 5)
+      .attr("text-anchor", "middle")
+      .text(d => d.unitPrice.toFixed(1));
+    labels.exit().remove();
+    gP.select(".x.axis").call(d3.axisBottom(xP))
+      .selectAll("text").style("font-size", "12px")
+      .attr("font-weight", "bold");
+    gP.select(".y.axis").call(d3.axisLeft(yP))
+      .selectAll("text").style("font-size", "12px")
+      .attr("font-weight", "bold");
+    gP.selectAll(".chart-title").remove();
+    gP.append("text").attr("class", "chart-title")
+      .attr("x", 0).attr("y", -20)
+      .text("Unit Price by Country (USD/kg)");
+  }
+
+  function updateBars(rep) {
+    currentRep = rep;
+    const ps = reportersData.find(r => r.reporter === rep).partners;
+    updateVal(ps);
+    updatePrice(ps);
+  }
+
+  updateBars("Thailand");
+}
+</script>
+</body>
+</html>

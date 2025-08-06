@@ -1,0 +1,162 @@
+```{=html}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sentiment Block Plot</title>
+
+  <!-- Load D3 -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 40px;
+    }
+    #sentiment-block {
+      position: relative;
+      margin: 0 2rem;
+    }
+    #hover-info-timeline {
+      position: absolute;
+      background-color: white;
+      border: 1px solid #ccc;
+      padding: 8px;
+      display: none;
+      pointer-events: none;
+      font-size: 12px;
+      max-width: 300px;
+    }
+  </style>
+</head>
+<body>
+
+<h3 style="margin-left: 2rem;">☕ How People Feel About Coffee Online</h3>
+<p style="margin: 0 2rem 1rem 2rem;">
+  This plot shows how people emotionally talk about coffee online—from bitter frustrations to joyful brews. Each block is one Reddit comment, placed by sentiment.
+</p>
+
+<div id="sentiment-block">
+  <div id="hover-info-timeline"></div>
+</div>
+
+<div style="margin: 1rem 2rem;">
+  <p>When you hover over a block, you can see the full comment context—what they said, what keyword it relates to, and how strong their sentiment was. You can also click to open the original Reddit post.</p>
+
+  <p>Positive emotions often appear with keywords like <b>“latte”</b> and <b>“cold brew”</b>, especially when users share recipes or café experiences. On the negative side, common complaints involve <b>“bitterness”</b> or brewing issues like the <b>“Moka pot.”</b></p>
+
+  <p>Unlike maps and charts that show how coffee is grown or sold, this plot focuses on how it’s <i>felt</i> and expressed—offering a glimpse into the real voices behind the data.</p>
+</div>
+
+<script>
+function drawSentimentBlockPlot(containerSelector, dataPath) {
+  const width = 900;
+  const height = 400;
+  const margin = { top: 50, right: 40, bottom: 50, left: 40 };
+  const blockSize = 12;
+
+  const svg = d3.select(containerSelector)
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+  const tooltip = d3.select("#hover-info-timeline");
+
+  function getSentimentLabel(score) {
+    if (score <= -0.8) return "Extremely Negative";
+    if (score <= -0.6) return "Very Negative";
+    if (score <= -0.4) return "Moderately Negative";
+    if (score <= -0.2) return "Slightly Negative";
+    if (score <= 0.2)  return "Neutral";
+    if (score <= 0.4)  return "Slightly Positive";
+    if (score <= 0.6)  return "Moderately Positive";
+    if (score <= 0.8)  return "Very Positive";
+    return "Extremely Positive";
+  }
+
+  d3.json(dataPath).then(data => {
+    const nested = d3.groups(data, d => d.sentiment_bin);
+    nested.sort((a, b) => d3.ascending(a[0], b[0]));
+    const bins = nested.map(d => d[0]);
+
+    const xScale = d3.scaleBand()
+      .domain(bins)
+      .range([margin.left, width - margin.right])
+      .paddingInner(0.2);
+
+    const allBlocks = nested.flatMap(([bin, comments]) =>
+      comments.map((c, i) => ({
+        ...c,
+        x: xScale(bin),
+        y: height - margin.bottom - (i + 1) * (blockSize + 1),
+        opacity: 1
+      }))
+    );
+
+    const rects = svg.selectAll("rect")
+      .data(allBlocks)
+      .enter()
+      .append("rect")
+      .attr("x", d => d.x)
+      .attr("y", d => d.y)
+      .attr("width", blockSize)
+      .attr("height", blockSize)
+      .attr("fill", "#333")
+      .attr("opacity", 0.7)
+      .style("cursor", "pointer")
+      .on("mouseover", function (event, d) {
+        d3.select(this).attr("fill", "#ff8a65");
+        tooltip
+          .style("display", "block")
+          .html(`
+            <strong>${d.title}</strong><br/>
+            <b>Keyword:</b> ${d.keyword}<br/>
+            <b>Sentiment:</b> ${getSentimentLabel(d.sentiment_bin)}<br/>
+            <div style="margin-top:5px;">${d.text.slice(0, 160)}...</div>
+          `)
+          .style("left", (event.pageX + 15) + "px")
+          .style("top", (event.pageY - 20) + "px");
+      })
+      .on("mouseout", function () {
+        d3.select(this).attr("fill", "#333");
+        tooltip.style("display", "none");
+      })
+      .on("click", function (event, d) {
+        window.open(d.url, "_blank");
+      });
+
+    const xAxis = d3.axisBottom(xScale).tickFormat(d => d.toFixed(1));
+    svg.append("g")
+      .attr("transform", `translate(0, ${height - margin.bottom + 10})`)
+      .call(xAxis)
+      .selectAll("text")
+      .style("font-size", "12px");
+
+    const keywords = Array.from(new Set(data.map(d => d.keyword))).sort();
+    d3.select(containerSelector)
+      .insert("div", ":first-child")
+      .style("margin-bottom", "10px")
+      .html(`
+        <label for="keyword-filter"><b>Filter by keyword:</b></label>
+        <select id="keyword-filter">
+          <option value="All">All</option>
+          ${keywords.map(k => `<option value="${k}">${k}</option>`).join("")}
+        </select>
+      `);
+
+    d3.select("#keyword-filter").on("change", function () {
+      const selected = this.value;
+      rects.transition()
+        .duration(300)
+        .attr("opacity", d => (selected === "All" || d.keyword === selected) ? 0.8 : 0.1);
+    });
+  });
+}
+
+drawSentimentBlockPlot("#sentiment-block", "visualization/data/sentiment_blocks.json");
+</script>
+
+</body>
+</html>
+```

@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.5.57">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>main – Coffee Bean Brochure</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<script src="site_libs/quarto-html/quarto.js"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+</head>
+
+<body class="fullcontent">
+
+<div id="quarto-search-results"></div>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+
+
+
+
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coffee Bean Explorer</title>
+  <script src="https://unpkg.com/scrollama"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Comic Sans MS', 'Marker Felt', 'Arial Rounded', sans-serif;
+    }
+
+    header, footer {
+      display: none;
+    }
+
+
+    body {
+      background-color: #fff5e6;
+      color: #5c3a21;
+      overflow-x: hidden;
+      width: 100vw; /* Make sure the body fills the viewport */
+    }
+
+    .coffee-container {
+      display: flex;
+      width: 100vw; /* Fill the entire viewport width */
+      height:100%;
+      margin: 0;
+      padding: 0;
+      left: 0;
+      margin-left: calc(-50vw + 50%);
+    }
+
+    .coffee-text {
+      width: 40%;
+      padding: 5vh 4vw;
+      position: sticky;
+      top: 0;
+      align-self: flex-start;
+      height: 100vh;
+      overflow-y: auto;
+      background: linear-gradient(to bottom, #fff9f0, #ffe8cc);
+    }
+
+    .coffee-graphics {
+      width: 60%;
+      background: #fff;
+    }
+
+    .coffee-step {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 0 2vw; /* Reduce the inner margin */
+    }
+
+    .visualization-grid {
+      display: grid;
+      grid-template-rows: auto auto;
+      gap: 20px;
+      width: 100%;
+    }
+
+    .bean-row {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      height: 200px;
+    }
+
+    .metrics-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      height: 300px;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 100%;
+    }
+
+    h1.coffee-title {
+      color: #8b5a2b;
+      margin-bottom: 20px;
+      font-size: 2.2rem;
+      text-shadow: 2px 2px 4px rgba(139, 90, 43, 0.1);
+    }
+
+    h2.coffee-name {
+      color: #a67c52;
+      margin: 15px 0;
+      font-size: 1.8rem;
+      position: relative;
+      display: inline-block;
+    }
+
+    h2.coffee-name:after {
+      content: "";
+      position: absolute;
+      bottom: -5px;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: linear-gradient(to right, #d4a76a, transparent);
+    }
+
+    @media (max-width: 768px) {
+      .coffee-container {
+        flex-direction: column;
+      }
+      .coffee-text, .coffee-graphics {
+        width: 100%;
+        position: static;
+        height: auto;
+      }
+      .coffee-step {
+        min-height: auto;
+        padding: 40px 20px;
+      }
+      .metrics-row {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+    }
+  </style>
+
+
+
+<div class="coffee-container">
+  <!-- Text area on the left -->
+  <div class="coffee-text">
+    <h1 class="coffee-title">☕ Coffee Bean Explorer</h1>
+    <div id="coffee-content">
+      <h2 class="coffee-name anchored">Arabica</h2>
+      <p>The world's most popular coffee bean, accounting for more than 60% of global coffee production.</p>
+      <p>Grown at high altitudes, they have a rich flavor and aroma and are often preferred by coffee lovers.</p>
+      <p><em>Mild, sour taste, often used in high-quality coffee.</em></p>
+    </div>
+  </div>
+
+  <!-- The chart area on the right -->
+  <div class="coffee-graphics">
+    <!-- Arabica -->
+    <div class="coffee-step" data-step="1">
+      <div class="visualization-grid">
+        <div class="bean-row" id="bean1"></div>
+        <div class="metrics-row">
+          <div class="chart-container" id="caffeine1"></div>
+          <div class="chart-container" id="flavor1"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Robusta -->
+    <div class="coffee-step" data-step="2">
+      <div class="visualization-grid">
+        <div class="bean-row" id="bean2"></div>
+        <div class="metrics-row">
+          <div class="chart-container" id="caffeine2"></div>
+          <div class="chart-container" id="flavor2"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Liberica -->
+    <div class="coffee-step" data-step="3">
+      <div class="visualization-grid">
+        <div class="bean-row" id="bean3"></div>
+        <div class="metrics-row">
+          <div class="chart-container" id="caffeine3"></div>
+          <div class="chart-container" id="flavor3"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Excelsa -->
+    <div class="coffee-step" data-step="4">
+      <div class="visualization-grid">
+        <div class="bean-row" id="bean4"></div>
+        <div class="metrics-row">
+          <div class="chart-container" id="caffeine4"></div>
+          <div class="chart-container" id="flavor4"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // coffee bean data
+  const coffeeData = [
+    {
+      name: "Arabica",
+      color: "#8d6e63",
+      flavor: {
+        "Acidity": 80,
+        "Sweetness": 70,
+        "Body": 60,
+        "Floral": 40,
+        "Fruity": 65
+      },
+      caffeine: 1.2,
+      shape: "oval",
+      face: "happy"
+    },
+    {
+      name: "Robusta",
+      color: "#6d4c41",
+      flavor: {
+        "Bitterness": 90,
+        "Body": 80,
+        "Earthiness": 70,
+        "Woody": 60,
+        "Caffeine": 95
+      },
+      caffeine: 2.4,
+      shape: "round",
+      face: "energetic"
+    },
+    {
+      name: "Liberica",
+      color: "#a1887f",
+      flavor: {
+        "Floral": 75,
+        "Fruity": 70,
+        "Spicy": 60,
+        "Woody": 50,
+        "Unique": 85
+      },
+      caffeine: 1.5,
+      shape: "asymmetrical",
+      face: "quirky"
+    },
+    {
+      name: "Excelsa",
+      color: "#d2b48c",
+      flavor: {
+        "Tartness": 80,
+        "Fruity": 75,
+        "Complexity": 85,
+        "Spicy": 60,
+        "Depth": 70
+      },
+      caffeine: 1.8,
+      shape: "elongated",
+      face: "surprised"
+    }
+  ];
+
+  // text description
+  const coffeeTexts = [
+    `<h2 class="coffee-name">Arabica</h2>
+     <p>The world's most popular coffee bean, accounting for more than 60% of global coffee production.</p>
+     <p>Grown at high altitudes, they have a rich flavor and aroma and are often preferred by coffee lovers.</p>
+     <p><em>Mild, sour taste, often used in high-quality coffee.</em></p>`,
+
+    `<h2 class="coffee-name">Robusta</h2>
+     <p>The world's second largest type of coffee bean.</p>
+     <p>They grow in tropical climates and are generally more resistant to pests and diseases than Arabica beans.</p>
+     <p><em>Bitter, high in caffeine, suitable for Italian concentrate.</em></p>`,
+
+    `<h2 class="coffee-name">Liberica</h2>
+     <p>One of the rarest coffee beans in the world, with a unique floral and fruity flavor.</p>
+     <p>Commonly sold in markets in places like the Philippines, it is often used in coffee blends.</p>`,
+
+    `<h2 class="coffee-name">Excelsa</h2>
+     <p>Belongs to the Liberica subspecies, which is native to Africa but now grows mostly in Southeast Asia.</p>
+     <p><em>Strong sour and sweet, unique taste.</em></p>`
+  ];
+
+  // Draw cute style coffee beans (optimize the Robusta expression)
+  function drawCuteBean(id, data) {
+    const container = d3.select(`#${id}`)
+      .append('svg')
+      .attr('width', '100%')
+      .attr('height', '100%')
+      .attr('viewBox', '0 0 500 200');
+
+    const group = container.append('g')
+      .attr('transform', 'translate(250, 100)');
+
+    // Draw the basic shape of coffee beans
+    let beanPath;
+    switch(data.shape) {
+      case 'oval':
+        beanPath = "M -80,0 C -80,-50 80,-50 80,0 C 80,50 -80,50 -80,0 Z";
+        break;
+      case 'round':
+        beanPath = "M 0,-80 C 50,-80 80,-50 80,0 C 80,50 50,80 0,80 C -50,80 -80,50 -80,0 C -80,-50 -50,-80 0,-80 Z";
+        break;
+      case 'asymmetrical':
+        beanPath = "M -60,-30 C -20,-80 40,-60 70,-10 C 90,30 40,70 -20,50 C -60,30 -80,10 -60,-30 Z";
+        break;
+      case 'elongated':
+        beanPath = "M -100,-20 C -60,-60 60,-60 100,-20 C 120,20 80,60 0,60 C -80,60 -120,20 -100,-20 Z";
+        break;
+    }
+
+    group.append('path')
+      .attr('d', beanPath)
+      .attr('fill', data.color)
+      .attr('stroke', d3.color(data.color).darker(0.3))
+      .attr('stroke-width', 3);
+
+    // Add cute facial expressions (optimize Robusta expressions)
+    switch(data.face) {
+      case 'happy':
+        // Arabica - smile face
+        group.append('path')
+          .attr('d', 'M -30,-10 Q 0,10 30,-10')
+          .attr('fill', 'none')
+          .attr('stroke', '#5c3a21')
+          .attr('stroke-width', 3);
+        group.selectAll('eyes')
+          .data([-20, 20])
+          .enter()
+          .append('circle')
+          .attr('cx', d => d)
+          .attr('cy', -20)
+          .attr('r', 6)
+          .attr('fill', '#5c3a21');
+        break;
+      case 'energetic':
+        // Robusta - Clearer expressions
+        group.append('path')
+          .attr('d', 'M -25,-5 Q 0,25 25,-5')
+          .attr('fill', 'none')
+          .attr('stroke', '#5c3a21')
+          .attr('stroke-width', 4); // Thicken the lines
+        group.selectAll('eyes')
+          .data([-20, 20])
+          .enter()
+          .append('circle')
+          .attr('cx', d => d)
+          .attr('cy', -20)
+          .attr('r', 8) // Enlarge the eyes
+          .attr('fill', '#5c3a21')
+          .attr('stroke', 'white')
+          .attr('stroke-width', 2);
+        // Add the lightning symbol to represent energy
+        group.append('path')
+          .attr('d', 'M -5,15 L 0,5 L 5,15 L 0,10')
+          .attr('fill', '#ffcc00')
+          .attr('stroke', '#ff9900')
+          .attr('stroke-width', 1.5);
+        break;
+      case 'quirky':
+        // Liberica - Strange expression
+        group.append('path')
+          .attr('d', 'M -25,0 L -15,10 M 15,0 L 25,10 M -30,-10 Q 0,20 30,-10')
+          .attr('fill', 'none')
+          .attr('stroke', '#5c3a21')
+          .attr('stroke-width', 3);
+        group.selectAll('eyes')
+          .data([-20, 20])
+          .enter()
+          .append('circle')
+          .attr('cx', d => d)
+          .attr('cy', -20)
+          .attr('r', 5)
+          .attr('fill', '#5c3a21');
+        break;
+      case 'surprised':
+        // Excelsa - Surprised expression
+        group.append('circle')
+          .attr('cx', 0)
+          .attr('cy', 10)
+          .attr('r', 12)
+          .attr('fill', '#5c3a21');
+        group.selectAll('eyes')
+          .data([-20, 20])
+          .enter()
+          .append('circle')
+          .attr('cx', d => d)
+          .attr('cy', -20)
+          .attr('r', 8)
+          .attr('fill', '#5c3a21');
+        break;
+    }
+
+    // Add the name of the coffee beans
+    group.append('text')
+      .attr('x', 0)
+      .attr('y', 98)
+      .attr('text-anchor', 'middle')
+      .text(data.name)
+      .attr('font-size', '24px')
+      .attr('font-weight', 'bold')
+      .attr('fill', data.color);
+  }
+
+  // Create a caffeine chart for a coffee cup (optimize the text position)
+  function createCupChart(id, data) {
+    const svg = d3.select(`#${id}`)
+      .append('svg')
+      .attr('width', '100%')
+      .attr('height', '100%')
+      .attr('viewBox', '0 0 300 300');
+
+    const cupGroup = svg.append('g')
+      .attr('transform', 'translate(150, 180)'); // Move the entire cup down
+
+    // Draw a coffee cup
+    cupGroup.append('path')
+      .attr('d', 'M -80,40 L -60,80 L 60,80 L 80,40 L 80,-100 L -80,-100 Z')
+      .attr('fill', '#f8f8f8')
+      .attr('stroke', '#d0d0d0')
+      .attr('stroke-width', 2);
+
+    // Cup handle
+    cupGroup.append('path')
+      .attr('d', 'M 80,-20 C 120,-40 120,0 80,20')
+      .attr('fill', 'none')
+      .attr('stroke', '#d0d0d0')
+      .attr('stroke-width', 2);
+
+    // Coffee liquid
+    const liquidHeight = 140 * (data.caffeine / 2.5);
+    cupGroup.append('rect')
+      .attr('x', -75)
+      .attr('y', 40 - liquidHeight)
+      .attr('width', 150)
+      .attr('height', liquidHeight)
+      .attr('fill', data.color)
+      .attr('opacity', 0.7);
+
+    // Hot air (adjust to a position that does not interfere with the text)
+    cupGroup.selectAll('steam')
+      .data([-40, -20, 0, 20, 40])
+      .enter()
+      .append('path')
+      .attr('d', d => `M ${d},-100 C ${d},-130 ${d+10},-150 ${d},-180`)
+      .attr('fill', 'none')
+      .attr('stroke', '#a0a0a0')
+      .attr('stroke-width', 1.5)
+      .attr('opacity', 0.5);
+
+    // Add caffeine value (move above the cup)
+    svg.append('text')
+      .attr('x', 150)
+      .attr('y', 50) // Upward movement of text
+      .attr('text-anchor', 'middle')
+      .text(`${data.caffeine}% caffeine`)
+      .attr('font-size', '18px')
+      .attr('font-weight', 'bold')
+      .attr('fill', data.color);
+
+    // Add a title (Move to the top)
+    svg.append('text')
+      .attr('x', 150)
+      .attr('y', 30)
+      .attr('text-anchor', 'middle')
+      .text('Caffeine Content')
+      .attr('font-size', '16px')
+      .attr('font-weight', 'bold');
+  }
+
+  // Create radar charts (to optimize readability)
+  function createFlavorChart(id, data) {
+    const svg = d3.select(`#${id}`)
+      .append('svg')
+      .attr('width', '100%')
+      .attr('height', '100%')
+      .attr('viewBox', '0 0 350 350'); // increase viewBox
+
+    const center = { x: 175, y: 175 }; // Adjust the center point
+    const radius = 120; // Increase the radius
+    const categories = Object.keys(data.flavor);
+    const levels = 4;
+
+    // Draw the radar grid (in a lighter color)
+    for (let level = 1; level <= levels; level++) {
+      const levelRadius = radius * level/levels;
+      svg.append('circle')
+        .attr('cx', center.x)
+        .attr('cy', center.y)
+        .attr('r', levelRadius)
+        .attr('fill', 'none')
+        .attr('stroke', '#f0f0f0')
+        .attr('stroke-width', 1);
+    }
+
+    // Draw the axis (more clearly)
+    categories.forEach((cat, i) => {
+      const angle = (i * 2 * Math.PI / categories.length) - Math.PI/2;
+      const x = center.x + radius * Math.cos(angle);
+      const y = center.y + radius * Math.sin(angle);
+      
+      svg.append('line')
+        .attr('x1', center.x)
+        .attr('y1', center.y)
+        .attr('x2', x)
+        .attr('y2', y)
+        .attr('stroke', '#e0e0e0')
+        .attr('stroke-width', 1);
+      
+      // Axis label (increase font and spacing)
+      svg.append('text')
+        .attr('x', center.x + (radius + 25) * Math.cos(angle))
+        .attr('y', center.y + (radius + 25) * Math.sin(angle))
+        .text(cat)
+        .attr('font-size', '14px')
+        .attr('text-anchor', 'middle')
+        .attr('fill', '#666');
+    });
+
+    // Draw the data area (more transparent)
+    const points = categories.map((cat, i) => {
+      const angle = (i * 2 * Math.PI / categories.length) - Math.PI/2;
+      const value = data.flavor[cat];
+      return {
+        x: center.x + radius * (value/100) * Math.cos(angle),
+        y: center.y + radius * (value/100) * Math.sin(angle)
+      };
+    });
+
+    const line = d3.line()
+      .x(d => d.x)
+      .y(d => d.y)
+      .curve(d3.curveCatmullRomClosed);
+
+    svg.append('path')
+      .datum(points)
+      .attr('d', line)
+      .attr('fill', data.color)
+      .attr('fill-opacity', 0.15) // More transparent
+      .attr('stroke', data.color)
+      .attr('stroke-width', 2.5); // Thicken the lines
+
+    // Add data points (larger and more obvious)
+    points.forEach((point, i) => {
+      svg.append('circle')
+        .attr('cx', point.x)
+        .attr('cy', point.y)
+        .attr('r', 5)
+        .attr('fill', data.color)
+        .attr('stroke', 'white')
+        .attr('stroke-width', 1.5);
+      
+      // Add numeric labels
+      svg.append('text')
+        .attr('x', point.x - 20 * Math.cos(Math.atan2(point.y - center.y, point.x - center.x)))
+        .attr('y', point.y - 15 * Math.sin(Math.atan2(point.y - center.y, point.x - center.x)))
+        .text(data.flavor[Object.keys(data.flavor)[i]])
+        .attr('font-size', '14px')
+        .attr('fill', data.color);
+    });
+
+    // Add the title (move up and bold)
+    svg.append('text')
+      .attr('x', center.x)
+      .attr('y', 13)
+      .text('Flavor Profile')
+      .attr('text-anchor', 'middle')
+      .attr('font-size', '18px')
+      .attr('font-weight', 'bold')
+      .attr('fill', '#5c3a21');
+  }
+
+  // Initialize all the charts
+  coffeeData.forEach((data, i) => {
+    drawCuteBean(`bean${i+1}`, data);
+    createCupChart(`caffeine${i+1}`, data);
+    createFlavorChart(`flavor${i+1}`, data);
+  });
+
+  // Initialize Scrollama
+  const scroller = scrollama();
+
+  scroller
+    .setup({
+      step: '.coffee-step',
+      offset: 0.3,
+      progress: true
+    })
+    .onStepEnter(response => {
+      const stepIndex = response.index;
+      document.getElementById('coffee-content').innerHTML = coffeeTexts[stepIndex];
+    });
+
+  window.addEventListener('resize', scroller.resize);
+</script>
+
+
+
+
+
+
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    // For code content inside modals, clipBoardJS needs to be initialized with a container option
+    // TODO: Check when it could be a function (https://github.com/zenorocha/clipboard.js/issues/860)
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+<p>© 🌸 2025 DSAN5200 Spring Visualization</p>
+</div>   
+    <div class="nav-footer-center">
+<p>Built by ☕️ Group9</p>
+</div>
+    <div class="nav-footer-right">
+<p><a href="https://github.com/gu-dsan5200/dsan5200-spring2025-project-group-09.git">GitHub 🔗</a></p>
+</div>
+  </div>
+</footer>
+
+
+
+
+</body></html>
