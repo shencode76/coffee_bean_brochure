@@ -1,0 +1,334 @@
+---
+title: "Linking Geospatial Visualization" 
+code-fold: true
+engine: knitr
+execute: 
+  warning: false
+---
+
+```{r} 
+# Loading
+library("readxl")
+# install.packages('ggiraph')
+# install.packages('patchwork')
+# install.packages('sf')
+# if (!require("devtools")) install.packages("devtools")
+
+# devtools::install_github("https://github.com/schochastics/roughsf")
+
+library(colorspace)
+library(ggiraph) 
+library(ggplot2) # install.packages('ggplot2')
+library(dplyr) # install.packages('dplyr')
+library(patchwork) 
+library(tidyr) # install.packages('tidyr')
+library(sf) # install.packages('sf')
+set.seed(123)  
+library(sf)
+library(patchwork)
+```
+
+## Arabica Plots
+```{r} 
+arabica_df <- read.csv("../data/arabica_year_clean.csv") 
+```
+
+
+```{r} 
+world_sf <- read_sf("https://raw.githubusercontent.com/holtzy/R-graph-gallery/master/DATA/world.geojson")
+world_sf <- world_sf %>%
+  filter(!name %in% c("Antarctica", "Greenland"))
+
+# Join the happiness data with the full world map
+world_sf <- world_sf %>%
+  right_join(arabica_df, by = c("name" = "Country.of.Origin"))
+
+```
+
+```{r}  
+coffee_data_world <- world_sf %>% 
+  filter(!is.na(Total.Cup.Points)) %>%
+  filter(Total.Cup.Points != 0) 
+country_year_avg <- coffee_data_world %>%
+  group_by(name, Harvest.Year) %>%
+  summarise(Avg_Score = mean(Total.Cup.Points, na.rm = TRUE), .groups = "drop") 
+ 
+
+# Plot p1: Average Cup Score Over Time by Country
+p1 <- ggplot(
+  country_year_avg,
+  aes(
+    x = Harvest.Year,
+    y = Avg_Score,
+    tooltip = paste("Country:", name, 
+        "\nYear:", Harvest.Year, 
+        "\nAvg Score:", round(Avg_Score, 1)),
+    data_id = name
+  )
+) +
+  geom_point_interactive(
+    size = 3,
+    alpha = 0.8,
+    color = "#fbddae",
+  ) +
+  labs(    
+    title = "Arabica: Average Cup Score Over Time by Country", 
+    x = "Year", y = "Average Cup Score"
+  ) + 
+  theme_minimal() +
+  theme(
+    axis.title = element_text(size = 10),
+    legend.title = element_blank(),
+    legend.position = "none"
+  )
+
+
+
+p2 <- coffee_data_world %>%
+  group_by(name) %>%
+  summarise(Avg_Score = mean(Total.Cup.Points, na.rm = TRUE)) %>%
+  arrange(desc(Avg_Score)) %>%
+  slice_head(n = 10) %>%
+  ggplot(aes(
+    x = reorder(name, Avg_Score),
+    y = Avg_Score - 80,  
+    tooltip = paste("Country:", name, "\nAvg Cup Score of Samples from Country:", round(Avg_Score, 1)),
+    data_id = name
+  )) +
+  geom_col_interactive(fill = "#cbac85") +
+  coord_flip() +
+  labs(title = "Arabica: Top 10 Countries by Average Cup Score", 
+       x = NULL, y = NULL) +  # Remove y-axis label
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    axis.text = element_blank()
+  )  
+
+# 3. Choropleth Map (Coffee Quality by Country)
+p3 <- ggplot() +
+  geom_sf(data = world_sf, fill = "lightgrey", color = "white", size = 0.1) +
+  geom_sf_interactive(
+    data = coffee_data_world,
+    aes(fill = Total.Cup.Points,
+        tooltip = paste(
+          "Country:", name, "\n",
+          "Mean Altitude", altitude_mean_meters, "\n",
+          "Cup Score:", round(Total.Cup.Points, 1)
+        ),
+        data_id = name)
+  ) +
+  geom_hline(yintercept = 0, color = "red", linewidth = 1, linetype = "dashed") +   # <--- equator
+  annotate("text", x = 0, y = 1e6, label = "Coffee Belt (Equator 0°)", color = "red", size = 5) +
+  scale_fill_viridis_c(na.value = "lightgrey") +
+  coord_sf(crs = st_crs(3857)) +
+  labs(title = "Arabica: Geospatial Map of Total Cup Points Distribution", 
+       x = NULL, y = "Total Cup Points") +
+  theme_void() +
+  theme(legend.position = "bottom")
+
+
+p3 <- p3 +
+  scale_fill_gradientn(
+    colors = rev(c("#5c3d23", "#b97a4d", "#f2e3d0")),
+    na.value = "#EAE0D5",
+    name = "Cup Score",
+    guide = guide_colorbar(reverse = FALSE)             # <-- reverse legend display
+  ) +
+  theme(
+    legend.background = element_rect(fill = "#FFF8F0")
+  )
+
+# Combine plots
+combined_plot1 <- (p1 + p2) / p3 + 
+  plot_layout(heights = c(1, 1.5)) +
+  plot_annotation(title = "Coffee Quality Analysis")
+
+# Make interactive
+interactive_plot1 <- girafe(
+  ggobj = combined_plot1,
+  width_svg = 12,
+  height_svg = 10
+)
+ 
+
+interactive_plot1 <- girafe_options(
+  interactive_plot1,
+  opts_hover(css = "fill:#ffae12;stroke:black;r:6pt;"),
+  opts_tooltip(
+    css = "background-color:#fbeedb;
+           color:#3b2f1b;
+           border:1px solid #c79c6d;
+           padding:6px;
+           border-radius:4px;
+           font-family:'Arial';
+           font-size:14px;",
+    opacity = 0.95,
+    use_fill = TRUE
+  )
+)
+
+interactive_plot1
+
+```
+
+```{r}
+library(htmlwidgets)
+
+saveWidget(interactive_plot1, file = "visualization/arabica_geo.html", selfcontained = TRUE)
+```
+
+## Robusta Plots
+```{r} 
+robusta_df <- read.csv("../data/robusta_year_clean.csv") 
+```
+
+```{r} 
+# Count rows by country and sort
+country_counts <- robusta_df %>%
+  count(Country.of.Origin, name = "Count") %>%
+  arrange(desc(Count)) %>%
+  filter(!is.na(Country.of.Origin))  # Remove NA values
+```
+
+```{r} 
+world_sf <- read_sf("https://raw.githubusercontent.com/holtzy/R-graph-gallery/master/DATA/world.geojson")
+world_sf <- world_sf %>%
+  filter(!name %in% c("Antarctica", "Greenland"))
+
+# Join the happiness data with the full world map
+world_sf <- world_sf %>%
+  right_join(robusta_df, by = c("name" = "Country.of.Origin"))
+ 
+```
+
+```{r}  
+coffee_data_world <- world_sf %>% 
+  filter(!is.na(Total.Cup.Points)) %>%
+  filter(Total.Cup.Points != 0)  
+
+country_year_avg <- coffee_data_world %>%
+  group_by(name, Harvest.Year) %>%
+  summarise(Avg_Score = mean(Total.Cup.Points, na.rm = TRUE), .groups = "drop") 
+ 
+# 1. Scatter Plot (Altitude vs. Cup Points)
+# Plot p1: Average Cup Score Over Time by Country
+p1 <- ggplot(
+  country_year_avg,
+  aes(
+    x = Harvest.Year,
+    y = Avg_Score,
+    tooltip = paste("Country:", name, 
+        "\nYear:", Harvest.Year,  
+        "\nAvg Score:", round(Avg_Score, 1)),
+    data_id = name
+  )
+) +
+  geom_point_interactive(
+    size = 3,
+    alpha = 0.8,
+    color = "#fbddae",
+  ) +
+  labs(    
+    title = "Robusta: Average Cup Score Over Time by Country", 
+    x = "Year", y = "Average Cup Score"
+  ) + 
+  theme_minimal() +
+  theme(
+    axis.title = element_text(size = 10),
+    legend.title = element_blank(),
+    legend.position = "none"
+  )
+
+p2 <- coffee_data_world %>%
+  group_by(name) %>%
+  summarise(Avg_Score = mean(Total.Cup.Points, na.rm = TRUE)) %>%
+  arrange(desc(Avg_Score)) %>%
+  slice_head(n = 10) %>%
+  ggplot(aes(
+    x = reorder(name, Avg_Score),
+    y = Avg_Score - 75,  
+    tooltip = paste("Country:", name, "\nAvg Cup Score of Samples from Country:", round(Avg_Score, 1)),
+    data_id = name
+  )) +
+  geom_col_interactive(fill = "#cbac85") +
+  coord_flip() +
+  labs(title = "Robusta: Top 10 Countries by Average Cup Score", 
+       x = NULL, y = NULL) +  # Remove y-axis label
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    axis.text = element_blank()
+  )  
+
+# 3. Choropleth Map (Coffee Quality by Country)
+p3 <- ggplot() +
+  geom_sf(data = world_sf, fill = "lightgrey", color = "white", size = 0.1) +
+  geom_sf_interactive(
+    data = coffee_data_world,
+    aes(fill = Total.Cup.Points,
+        tooltip = paste(
+          "Country:", name, "\n",
+          "Mean Altitude", altitude_mean_meters, "\n",
+          "Cup Score:", round(Total.Cup.Points, 1)
+        ),
+        data_id = name)
+  ) +
+  geom_hline(yintercept = 0, color = "red", linewidth = 1, linetype = "dashed") +   # <--- equator
+  annotate("text", x = 0, y = 1e6, label = "Coffee Belt (Equator 0°)", color = "red", size = 5) +
+  scale_fill_viridis_c(na.value = "lightgrey") +
+  coord_sf(crs = st_crs(3857)) +  # Web Mercator projection
+  labs(title = "Robusta: Geospatial Map of Total Cup Points Distribution", 
+  x = NULL, y = "Total Cup Points") +
+  theme_void() +
+  theme(legend.position = "bottom")
+
+p3 <- p3 +
+  scale_fill_gradientn(
+    colors = rev(c("#5c3d23", "#b97a4d", "#f2e3d0")),
+    na.value = "#EAE0D5",
+    name = "Cup Score",
+    guide = guide_colorbar(reverse = FALSE)             # <-- reverse legend display
+  ) +
+  theme(
+    legend.background = element_rect(fill = "#FFF8F0")
+  )
+
+# Combine plots
+combined_plot2 <- (p1 + p2) / p3 + 
+  plot_layout(heights = c(1, 1.5)) +
+  plot_annotation(title = "Coffee Quality Analysis")
+
+# Make interactive
+interactive_plot2 <- girafe(
+  ggobj = combined_plot2,
+  width_svg = 12,
+  height_svg = 10
+)
+
+# Add hover effects
+interactive_plot2 <- girafe_options(
+  interactive_plot2,
+  opts_hover(css = "fill:#ffae12;stroke:black;r:6pt;"),
+  opts_tooltip(
+    css = "background-color:#fbeedb;
+           color:#3b2f1b;
+           border:1px solid #c79c6d;
+           padding:6px;
+           border-radius:4px;
+           font-family:'Arial';
+           font-size:14px;",
+    opacity = 0.9,
+    use_fill = TRUE
+  )
+)
+
+interactive_plot2
+```
+
+
+```{r}
+library(htmlwidgets)
+
+saveWidget(interactive_plot2, file = "visualization/robusta_geo.html", selfcontained = TRUE)
+```

@@ -1,0 +1,37 @@
+project:
+  type: website
+  output-dir: _site 
+  
+
+website:
+  title: "Coffee Bean Brochure"
+  page-footer:
+      left: "© 🌸 2025 DSAN5200 Spring Visualization"
+      center: "Built by ☕️ Group9"
+      right: "[GitHub 🔗](https://github.com/gu-dsan5200/dsan5200-spring2025-project-group-09.git)"
+format:
+  html:
+    theme: cosmo
+    # css: styles.css
+    toc: false
+    
+
+resources:
+  - static/data/combined_all_export.csv
+  - img
+  - visualization/data/bubble_with_descriptions.json
+  - visualization/data/sentiment_blocks.json
+  - visualization/details/**
+  - visualization/bubble_bounce_hover.js
+  - visualization/sentiment_block_plot.js
+  - visualization/block_timeline_sentiment.js
+javascripts:
+  - visualization/bubble_bounce_hover.js
+  - visualization/sentiment_block_plot.js
+  - https://cdn.jsdelivr.net/npm/vega@5.20.2/build/vega.min.js
+  - https://cdn.jsdelivr.net/npm/vega-lite@5.6.0/build/vega-lite.min.js
+  - https://cdn.jsdelivr.net/npm/vega-embed@6.19.0/build/vega-embed.min.js
+  - https://cdn.jsdelivr.net/npm/d3@7.0.0/dist/d3.min.js
+  - https://cdn.jsdelivr.net/npm/d3-timer@latest/dist/d3-timer.min.js
+  - https://cdn.jsdelivr.net/npm/d3-color@latest/dist/d3-color.min.js
+  - https://cdn.jsdelivr.net/npm/d3-array@latest/dist/d3-array.min.js

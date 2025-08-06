@@ -1,0 +1,597 @@
+```{=html}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coffee Bean Explorer</title>
+  <script src="https://unpkg.com/scrollama"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Comic Sans MS', 'Marker Felt', 'Arial Rounded', sans-serif;
+    }
+
+    header, footer {
+      display: none;
+    }
+
+
+    body {
+      background-color: #fff5e6;
+      color: #5c3a21;
+      overflow-x: hidden;
+      width: 100vw; /* Make sure the body fills the viewport */
+    }
+
+    .coffee-container {
+      display: flex;
+      width: 100vw; /* Fill the entire viewport width */
+      height:100%;
+      margin: 0;
+      padding: 0;
+      left: 0;
+      margin-left: calc(-50vw + 50%);
+    }
+
+    .coffee-text {
+      width: 40%;
+      padding: 5vh 4vw;
+      position: sticky;
+      top: 0;
+      align-self: flex-start;
+      height: 100vh;
+      overflow-y: auto;
+      background: linear-gradient(to bottom, #fff9f0, #ffe8cc);
+    }
+
+    .coffee-graphics {
+      width: 60%;
+      background: #fff;
+    }
+
+    .coffee-step {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 0 2vw; /* Reduce the inner margin */
+    }
+
+    .visualization-grid {
+      display: grid;
+      grid-template-rows: auto auto;
+      gap: 20px;
+      width: 100%;
+    }
+
+    .bean-row {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      height: 200px;
+    }
+
+    .metrics-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      height: 300px;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 100%;
+    }
+
+    h1.coffee-title {
+      color: #8b5a2b;
+      margin-bottom: 20px;
+      font-size: 2.2rem;
+      text-shadow: 2px 2px 4px rgba(139, 90, 43, 0.1);
+    }
+
+    h2.coffee-name {
+      color: #a67c52;
+      margin: 15px 0;
+      font-size: 1.8rem;
+      position: relative;
+      display: inline-block;
+    }
+
+    h2.coffee-name:after {
+      content: "";
+      position: absolute;
+      bottom: -5px;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: linear-gradient(to right, #d4a76a, transparent);
+    }
+
+    @media (max-width: 768px) {
+      .coffee-container {
+        flex-direction: column;
+      }
+      .coffee-text, .coffee-graphics {
+        width: 100%;
+        position: static;
+        height: auto;
+      }
+      .coffee-step {
+        min-height: auto;
+        padding: 40px 20px;
+      }
+      .metrics-row {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="coffee-container">
+  <!-- Text area on the left -->
+  <div class="coffee-text">
+    <h1 class="coffee-title">☕ Coffee Bean Explorer</h1>
+    <div id="coffee-content">
+      <h2 class="coffee-name">Arabica</h2>
+      <p>The world's most popular coffee bean, accounting for more than 60% of global coffee production.</p>
+      <p>Grown at high altitudes, they have a rich flavor and aroma and are often preferred by coffee lovers.</p>
+      <p><em>Mild, sour taste, often used in high-quality coffee.</em></p>
+    </div>
+  </div>
+
+  <!-- The chart area on the right -->
+  <div class="coffee-graphics">
+    <!-- Arabica -->
+    <div class="coffee-step" data-step="1">
+      <div class="visualization-grid">
+        <div class="bean-row" id="bean1"></div>
+        <div class="metrics-row">
+          <div class="chart-container" id="caffeine1"></div>
+          <div class="chart-container" id="flavor1"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Robusta -->
+    <div class="coffee-step" data-step="2">
+      <div class="visualization-grid">
+        <div class="bean-row" id="bean2"></div>
+        <div class="metrics-row">
+          <div class="chart-container" id="caffeine2"></div>
+          <div class="chart-container" id="flavor2"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Liberica -->
+    <div class="coffee-step" data-step="3">
+      <div class="visualization-grid">
+        <div class="bean-row" id="bean3"></div>
+        <div class="metrics-row">
+          <div class="chart-container" id="caffeine3"></div>
+          <div class="chart-container" id="flavor3"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Excelsa -->
+    <div class="coffee-step" data-step="4">
+      <div class="visualization-grid">
+        <div class="bean-row" id="bean4"></div>
+        <div class="metrics-row">
+          <div class="chart-container" id="caffeine4"></div>
+          <div class="chart-container" id="flavor4"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // coffee bean data
+  const coffeeData = [
+    {
+      name: "Arabica",
+      color: "#8d6e63",
+      flavor: {
+        "Acidity": 80,
+        "Sweetness": 70,
+        "Body": 60,
+        "Floral": 40,
+        "Fruity": 65
+      },
+      caffeine: 1.2,
+      shape: "oval",
+      face: "happy"
+    },
+    {
+      name: "Robusta",
+      color: "#6d4c41",
+      flavor: {
+        "Bitterness": 90,
+        "Body": 80,
+        "Earthiness": 70,
+        "Woody": 60,
+        "Caffeine": 95
+      },
+      caffeine: 2.4,
+      shape: "round",
+      face: "energetic"
+    },
+    {
+      name: "Liberica",
+      color: "#a1887f",
+      flavor: {
+        "Floral": 75,
+        "Fruity": 70,
+        "Spicy": 60,
+        "Woody": 50,
+        "Unique": 85
+      },
+      caffeine: 1.5,
+      shape: "asymmetrical",
+      face: "quirky"
+    },
+    {
+      name: "Excelsa",
+      color: "#d2b48c",
+      flavor: {
+        "Tartness": 80,
+        "Fruity": 75,
+        "Complexity": 85,
+        "Spicy": 60,
+        "Depth": 70
+      },
+      caffeine: 1.8,
+      shape: "elongated",
+      face: "surprised"
+    }
+  ];
+
+  // text description
+  const coffeeTexts = [
+    `<h2 class="coffee-name">Arabica</h2>
+     <p>The world's most popular coffee bean, accounting for more than 60% of global coffee production.</p>
+     <p>Grown at high altitudes, they have a rich flavor and aroma and are often preferred by coffee lovers.</p>
+     <p><em>Mild, sour taste, often used in high-quality coffee.</em></p>`,
+
+    `<h2 class="coffee-name">Robusta</h2>
+     <p>The world's second largest type of coffee bean.</p>
+     <p>They grow in tropical climates and are generally more resistant to pests and diseases than Arabica beans.</p>
+     <p><em>Bitter, high in caffeine, suitable for Italian concentrate.</em></p>`,
+
+    `<h2 class="coffee-name">Liberica</h2>
+     <p>One of the rarest coffee beans in the world, with a unique floral and fruity flavor.</p>
+     <p>Commonly sold in markets in places like the Philippines, it is often used in coffee blends.</p>`,
+
+    `<h2 class="coffee-name">Excelsa</h2>
+     <p>Belongs to the Liberica subspecies, which is native to Africa but now grows mostly in Southeast Asia.</p>
+     <p><em>Strong sour and sweet, unique taste.</em></p>`
+  ];
+
+  // Draw cute style coffee beans (optimize the Robusta expression)
+  function drawCuteBean(id, data) {
+    const container = d3.select(`#${id}`)
+      .append('svg')
+      .attr('width', '100%')
+      .attr('height', '100%')
+      .attr('viewBox', '0 0 500 200');
+
+    const group = container.append('g')
+      .attr('transform', 'translate(250, 100)');
+
+    // Draw the basic shape of coffee beans
+    let beanPath;
+    switch(data.shape) {
+      case 'oval':
+        beanPath = "M -80,0 C -80,-50 80,-50 80,0 C 80,50 -80,50 -80,0 Z";
+        break;
+      case 'round':
+        beanPath = "M 0,-80 C 50,-80 80,-50 80,0 C 80,50 50,80 0,80 C -50,80 -80,50 -80,0 C -80,-50 -50,-80 0,-80 Z";
+        break;
+      case 'asymmetrical':
+        beanPath = "M -60,-30 C -20,-80 40,-60 70,-10 C 90,30 40,70 -20,50 C -60,30 -80,10 -60,-30 Z";
+        break;
+      case 'elongated':
+        beanPath = "M -100,-20 C -60,-60 60,-60 100,-20 C 120,20 80,60 0,60 C -80,60 -120,20 -100,-20 Z";
+        break;
+    }
+
+    group.append('path')
+      .attr('d', beanPath)
+      .attr('fill', data.color)
+      .attr('stroke', d3.color(data.color).darker(0.3))
+      .attr('stroke-width', 3);
+
+    // Add cute facial expressions (optimize Robusta expressions)
+    switch(data.face) {
+      case 'happy':
+        // Arabica - smile face
+        group.append('path')
+          .attr('d', 'M -30,-10 Q 0,10 30,-10')
+          .attr('fill', 'none')
+          .attr('stroke', '#5c3a21')
+          .attr('stroke-width', 3);
+        group.selectAll('eyes')
+          .data([-20, 20])
+          .enter()
+          .append('circle')
+          .attr('cx', d => d)
+          .attr('cy', -20)
+          .attr('r', 6)
+          .attr('fill', '#5c3a21');
+        break;
+      case 'energetic':
+        // Robusta - Clearer expressions
+        group.append('path')
+          .attr('d', 'M -25,-5 Q 0,25 25,-5')
+          .attr('fill', 'none')
+          .attr('stroke', '#5c3a21')
+          .attr('stroke-width', 4); // Thicken the lines
+        group.selectAll('eyes')
+          .data([-20, 20])
+          .enter()
+          .append('circle')
+          .attr('cx', d => d)
+          .attr('cy', -20)
+          .attr('r', 8) // Enlarge the eyes
+          .attr('fill', '#5c3a21')
+          .attr('stroke', 'white')
+          .attr('stroke-width', 2);
+        // Add the lightning symbol to represent energy
+        group.append('path')
+          .attr('d', 'M -5,15 L 0,5 L 5,15 L 0,10')
+          .attr('fill', '#ffcc00')
+          .attr('stroke', '#ff9900')
+          .attr('stroke-width', 1.5);
+        break;
+      case 'quirky':
+        // Liberica - Strange expression
+        group.append('path')
+          .attr('d', 'M -25,0 L -15,10 M 15,0 L 25,10 M -30,-10 Q 0,20 30,-10')
+          .attr('fill', 'none')
+          .attr('stroke', '#5c3a21')
+          .attr('stroke-width', 3);
+        group.selectAll('eyes')
+          .data([-20, 20])
+          .enter()
+          .append('circle')
+          .attr('cx', d => d)
+          .attr('cy', -20)
+          .attr('r', 5)
+          .attr('fill', '#5c3a21');
+        break;
+      case 'surprised':
+        // Excelsa - Surprised expression
+        group.append('circle')
+          .attr('cx', 0)
+          .attr('cy', 10)
+          .attr('r', 12)
+          .attr('fill', '#5c3a21');
+        group.selectAll('eyes')
+          .data([-20, 20])
+          .enter()
+          .append('circle')
+          .attr('cx', d => d)
+          .attr('cy', -20)
+          .attr('r', 8)
+          .attr('fill', '#5c3a21');
+        break;
+    }
+
+    // Add the name of the coffee beans
+    group.append('text')
+      .attr('x', 0)
+      .attr('y', 98)
+      .attr('text-anchor', 'middle')
+      .text(data.name)
+      .attr('font-size', '24px')
+      .attr('font-weight', 'bold')
+      .attr('fill', data.color);
+  }
+
+  // Create a caffeine chart for a coffee cup (optimize the text position)
+  function createCupChart(id, data) {
+    const svg = d3.select(`#${id}`)
+      .append('svg')
+      .attr('width', '100%')
+      .attr('height', '100%')
+      .attr('viewBox', '0 0 300 300');
+
+    const cupGroup = svg.append('g')
+      .attr('transform', 'translate(150, 180)'); // Move the entire cup down
+
+    // Draw a coffee cup
+    cupGroup.append('path')
+      .attr('d', 'M -80,40 L -60,80 L 60,80 L 80,40 L 80,-100 L -80,-100 Z')
+      .attr('fill', '#f8f8f8')
+      .attr('stroke', '#d0d0d0')
+      .attr('stroke-width', 2);
+
+    // Cup handle
+    cupGroup.append('path')
+      .attr('d', 'M 80,-20 C 120,-40 120,0 80,20')
+      .attr('fill', 'none')
+      .attr('stroke', '#d0d0d0')
+      .attr('stroke-width', 2);
+
+    // Coffee liquid
+    const liquidHeight = 140 * (data.caffeine / 2.5);
+    cupGroup.append('rect')
+      .attr('x', -75)
+      .attr('y', 40 - liquidHeight)
+      .attr('width', 150)
+      .attr('height', liquidHeight)
+      .attr('fill', data.color)
+      .attr('opacity', 0.7);
+
+    // Hot air (adjust to a position that does not interfere with the text)
+    cupGroup.selectAll('steam')
+      .data([-40, -20, 0, 20, 40])
+      .enter()
+      .append('path')
+      .attr('d', d => `M ${d},-100 C ${d},-130 ${d+10},-150 ${d},-180`)
+      .attr('fill', 'none')
+      .attr('stroke', '#a0a0a0')
+      .attr('stroke-width', 1.5)
+      .attr('opacity', 0.5);
+
+    // Add caffeine value (move above the cup)
+    svg.append('text')
+      .attr('x', 150)
+      .attr('y', 50) // Upward movement of text
+      .attr('text-anchor', 'middle')
+      .text(`${data.caffeine}% caffeine`)
+      .attr('font-size', '18px')
+      .attr('font-weight', 'bold')
+      .attr('fill', data.color);
+
+    // Add a title (Move to the top)
+    svg.append('text')
+      .attr('x', 150)
+      .attr('y', 30)
+      .attr('text-anchor', 'middle')
+      .text('Caffeine Content')
+      .attr('font-size', '16px')
+      .attr('font-weight', 'bold');
+  }
+
+  // Create radar charts (to optimize readability)
+  function createFlavorChart(id, data) {
+    const svg = d3.select(`#${id}`)
+      .append('svg')
+      .attr('width', '100%')
+      .attr('height', '100%')
+      .attr('viewBox', '0 0 350 350'); // increase viewBox
+
+    const center = { x: 175, y: 175 }; // Adjust the center point
+    const radius = 120; // Increase the radius
+    const categories = Object.keys(data.flavor);
+    const levels = 4;
+
+    // Draw the radar grid (in a lighter color)
+    for (let level = 1; level <= levels; level++) {
+      const levelRadius = radius * level/levels;
+      svg.append('circle')
+        .attr('cx', center.x)
+        .attr('cy', center.y)
+        .attr('r', levelRadius)
+        .attr('fill', 'none')
+        .attr('stroke', '#f0f0f0')
+        .attr('stroke-width', 1);
+    }
+
+    // Draw the axis (more clearly)
+    categories.forEach((cat, i) => {
+      const angle = (i * 2 * Math.PI / categories.length) - Math.PI/2;
+      const x = center.x + radius * Math.cos(angle);
+      const y = center.y + radius * Math.sin(angle);
+      
+      svg.append('line')
+        .attr('x1', center.x)
+        .attr('y1', center.y)
+        .attr('x2', x)
+        .attr('y2', y)
+        .attr('stroke', '#e0e0e0')
+        .attr('stroke-width', 1);
+      
+      // Axis label (increase font and spacing)
+      svg.append('text')
+        .attr('x', center.x + (radius + 25) * Math.cos(angle))
+        .attr('y', center.y + (radius + 25) * Math.sin(angle))
+        .text(cat)
+        .attr('font-size', '14px')
+        .attr('text-anchor', 'middle')
+        .attr('fill', '#666');
+    });
+
+    // Draw the data area (more transparent)
+    const points = categories.map((cat, i) => {
+      const angle = (i * 2 * Math.PI / categories.length) - Math.PI/2;
+      const value = data.flavor[cat];
+      return {
+        x: center.x + radius * (value/100) * Math.cos(angle),
+        y: center.y + radius * (value/100) * Math.sin(angle)
+      };
+    });
+
+    const line = d3.line()
+      .x(d => d.x)
+      .y(d => d.y)
+      .curve(d3.curveCatmullRomClosed);
+
+    svg.append('path')
+      .datum(points)
+      .attr('d', line)
+      .attr('fill', data.color)
+      .attr('fill-opacity', 0.15) // More transparent
+      .attr('stroke', data.color)
+      .attr('stroke-width', 2.5); // Thicken the lines
+
+    // Add data points (larger and more obvious)
+    points.forEach((point, i) => {
+      svg.append('circle')
+        .attr('cx', point.x)
+        .attr('cy', point.y)
+        .attr('r', 5)
+        .attr('fill', data.color)
+        .attr('stroke', 'white')
+        .attr('stroke-width', 1.5);
+      
+      // Add numeric labels
+      svg.append('text')
+        .attr('x', point.x - 20 * Math.cos(Math.atan2(point.y - center.y, point.x - center.x)))
+        .attr('y', point.y - 15 * Math.sin(Math.atan2(point.y - center.y, point.x - center.x)))
+        .text(data.flavor[Object.keys(data.flavor)[i]])
+        .attr('font-size', '14px')
+        .attr('fill', data.color);
+    });
+
+    // Add the title (move up and bold)
+    svg.append('text')
+      .attr('x', center.x)
+      .attr('y', 13)
+      .text('Flavor Profile')
+      .attr('text-anchor', 'middle')
+      .attr('font-size', '18px')
+      .attr('font-weight', 'bold')
+      .attr('fill', '#5c3a21');
+  }
+
+  // Initialize all the charts
+  coffeeData.forEach((data, i) => {
+    drawCuteBean(`bean${i+1}`, data);
+    createCupChart(`caffeine${i+1}`, data);
+    createFlavorChart(`flavor${i+1}`, data);
+  });
+
+  // Initialize Scrollama
+  const scroller = scrollama();
+
+  scroller
+    .setup({
+      step: '.coffee-step',
+      offset: 0.3,
+      progress: true
+    })
+    .onStepEnter(response => {
+      const stepIndex = response.index;
+      document.getElementById('coffee-content').innerHTML = coffeeTexts[stepIndex];
+    });
+
+  window.addEventListener('resize', scroller.resize);
+</script>
+
+</body>
+</html>
+
+```
+

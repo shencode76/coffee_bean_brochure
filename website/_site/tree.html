@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.5.57">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>tree – Coffee Bean Brochure</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<script src="site_libs/quarto-html/quarto.js"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+</head>
+
+<body class="fullcontent">
+
+<div id="quarto-search-results"></div>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+
+
+
+
+<meta charset="UTF-8">
+<title>
+</title>
+<style>
+  body { margin: 0; font-family: sans-serif; }
+  #main-container { display: flex; flex-direction: column; width: 100%; max-width: 1200px; gap: 1px; margin: auto; height: 990px; }
+  #sankey-container { flex: 0 0 50%; }
+  #bar-container { flex: 0 0 50%; position: relative; }
+  #bar-charts { width: 100%; height: 100%; }
+  .node rect { stroke: #555; }
+  .link { fill: none; stroke: #888; stroke-opacity: .5; }
+  .link.highlight { stroke: orange; stroke-opacity: 1; }
+  .bar { cursor: pointer; }
+  .bar-label { font-size: 12px; fill: #000; pointer-events: none; }
+  .chart-title { font-size: 14px; font-weight: bold; }
+</style>
+
+
+<div id="main-container">
+<div id="sankey-container">
+
+</div>
+<div id="bar-container">
+<div id="bar-charts">
+
+</div>
+</div>
+</div>
+<script type="module">
+import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
+import { sankeyCircular } from "https://cdn.jsdelivr.net/npm/d3-sankey-circular@0.34.0/+esm";
+import { sankeyLinkHorizontal, sankeyJustify } from "https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/+esm";
+
+const reporterInfo = {
+  Thailand: { color: "#7B3F00"  },
+  "United States": { color: "#ADCAD6"},
+  "Lao PDR": { color: "#FFD23F" }
+};
+const reps = Object.keys(reporterInfo), clean = s => s.trim();
+
+const reporterOrder = ["Thailand", "United States", "Lao PDR"];
+const reporterSpacing = 100;
+
+d3.csv("static/data/combined_all_export.csv").then(raw => {
+  raw.forEach(d => {
+    d.value = +d["Trade Value 1000USD"];
+    d.Quantity = +d.Quantity.replace(/,/g, "");
+    d.Reporter = clean(d.Reporter);
+    d.Partner = clean(d.Partner);
+  });
+
+  const data = raw.filter(d =>
+    d.TradeFlow === "Export" &&
+    reps.includes(d.Reporter) &&
+    d.Partner.toLowerCase() !== "world"
+  );
+
+  const partnerUnit = new Map(
+    d3.rollup(
+      data,
+      vPartner => {
+        const byYear = d3.group(vPartner, d => d.Year);
+        const yearlyPrices = Array.from(byYear, ([year, rows]) => {
+          const val = d3.sum(rows, d => d.value);
+          const qty = d3.sum(rows, d => d.Quantity);
+          return qty ? (val * 1000) / qty : 0;
+        });
+        return d3.mean(yearlyPrices);
+      },
+      d => d.Reporter,
+      d => d.Partner
+    )
+  );
+
+  const reportersData = reps.map(rep => {
+    const rows = data.filter(d => d.Reporter === rep);
+    const top10 = Array.from(
+      d3.rollup(rows, v => d3.sum(v, d => d.value), d => d.Partner)
+    )
+    .sort((a, b) => d3.descending(a[1], b[1]))
+    .slice(0, 10)
+    .map(([p, val]) => ({ partner: p, value: val, unitPrice: partnerUnit.get(rep)?.get(p) || 0 }));
+    return { reporter: rep, partners: top10 };
+  });
+
+  draw(reportersData);
+});
+
+function draw(reportersData) {
+  const nodes = [];
+  const nodeSet = new Set();
+
+
+  reps.forEach(r => {
+    if (!nodeSet.has(r)) {
+      nodes.push({ name: r });
+      nodeSet.add(r);
+    }
+  });
+
+ 
+  reportersData.forEach(r => r.partners.forEach(p => {
+    const pname = reps.includes(p.partner) ? `${p.partner} (as partner)` : p.partner;
+    if (!nodeSet.has(pname)) {
+      nodes.push({ name: pname });
+      nodeSet.add(pname);
+    }
+  }));
+
+  const idx = n => nodes.findIndex(d => d.name === n);
+  const links = [];
+
+
+  reportersData.forEach(r => r.partners.forEach(p => {
+    if (r.reporter !== p.partner) {
+      const pname = reps.includes(p.partner) ? `${p.partner} (as partner)` : p.partner;
+      links.push({ source: idx(r.reporter), target: idx(pname), value: p.value, rep: r.reporter });
+    }
+  }));
+
+  const sW = document.getElementById("sankey-container").clientWidth,
+        sH = document.getElementById("sankey-container").clientHeight;
+
+  const gen = sankeyCircular()
+    .nodeWidth(15)
+    .nodePadding(18)
+    .circularLinkGap(2)
+    .nodeAlign(sankeyJustify)
+    .extent([[1, 1], [sW - 1, sH - 1]]);
+
+  const graph = gen({ nodes: nodes.map(d => ({ ...d })), links });
+
+  graph.nodes.forEach(n => {
+    if (reps.includes(n.name)) {
+      const i = reporterOrder.indexOf(n.name);
+      const h = n.y1 - n.y0 || 20;
+      n.x0 = 10;
+      n.x1 = 25;
+      n.y0 = 50 + i * reporterSpacing;
+      n.y1 = n.y0 + h;
+    }
+  });
+
+  graph.links.forEach(link => {
+    link.y0 = (link.source.y0 + link.source.y1) / 2;
+    link.y1 = (link.target.y0 + link.target.y1) / 2;
+  });
+
+  const svg = d3.select("#sankey-container").append("svg")
+    .attr("width", sW+100).attr("height", sH + 10).append("g").attr("transform", "translate(100, 0)");;
+
+  svg.append("g").selectAll("path").data(graph.links).enter()
+    .append("path").attr("class", "link")
+    .attr("d", sankeyLinkHorizontal())
+    .attr("stroke-width", d => Math.max(1, d.width));
+
+  const nd = svg.append("g").selectAll("g").data(graph.nodes).enter().append("g")
+    .attr("transform", d => `translate(${d.x0},${d.y0})`);
+
+  nd.append("rect")
+    .attr("width", d => d.x1 - d.x0)
+    .attr("height", d => Math.max(4, d.y1 - d.y0))
+    .attr("fill", d => reporterInfo[d.name.replace(" (as partner)", "")]?.color || "#ccc");
+
+  nd.append("text")
+    .attr("x", -6)
+    .attr("text-anchor", "end")
+    .attr("y", d => (d.y1 - d.y0) / 2)
+    .attr("dy", ".35em").attr("font-size", "14px")
+    .text(d => d.name);
+
+  nd.on("mouseover", (event, d) => {
+    if (reps.includes(d.name)) {
+      d3.selectAll(".link").classed("highlight", l => l.rep === d.name);
+      updateBars(d.name);
+    }
+  }).on("mouseout", () => {
+    d3.selectAll(".link").classed("highlight", false);
+  });
+  const extraWidth = 100;
+  const barW = document.getElementById("bar-charts").clientWidth + extraWidth,
+        barH = document.getElementById("bar-charts").clientHeight;
+  const svgBar = d3.select("#bar-charts").append("svg")
+    .attr("width", barW).attr("height", barH).style("overflow", "visible");
+  const m = { top: 20, right: 20, bottom: 60, left: 90 },
+        cW = barW - m.left - m.right,
+        cH = (barH - m.top - m.bottom) / 2 - 20;
+
+  const gVal = svgBar.append("g").attr("transform", `translate(${m.left},${m.top})`);
+  const xVal = d3.scaleBand().range([0, cW]).padding(.1);
+  const yVal = d3.scaleLinear().range([cH, 0]);
+  gVal.append("g").attr("class", "x axis").attr("transform", `translate(0,${cH})`);
+  gVal.append("g").attr("class", "y axis");
+
+  const gP = svgBar.append("g").attr("transform", `translate(${m.left},${m.top + cH + 70})`);
+  const xP = d3.scaleBand().range([0, cW]).padding(.1);
+  const yP = d3.scaleLinear().range([cH, 0]);
+  gP.append("g").attr("class", "x axis").attr("transform", `translate(0,${cH})`);
+  gP.append("g").attr("class", "y axis");
+
+  const pad5 = a => { while (a.length < 5) a.push({ partner: "", value: 0, unitPrice: 0 }); return a; };
+  let currentRep = "Thailand";
+
+  function updateVal(arr) {
+    const top5 = pad5(arr.slice(0, 10));
+    const rename = name => name === "Other Asia, nes" ? "Other Asia" : name;
+    xVal.domain(top5.map(d => rename(d.partner)));
+    yVal.domain([0, d3.max(top5, d => d.value)]);
+    const bars = gVal.selectAll(".bar").data(top5, d => d.partner);
+    bars.enter().append("rect").attr("class", "bar").merge(bars)
+      .transition().duration(300)
+      .attr("x", d => xVal(rename(d.partner)))
+      .attr("width", xVal.bandwidth())
+      .attr("y", d => yVal(d.value))
+      .attr("height", d => cH - yVal(d.value))
+      .attr("fill", reporterInfo[currentRep].color);
+    bars.exit().remove();
+    const labels = gVal.selectAll(".bar-label").data(top5, d => d.partner);
+    labels.enter().append("text").attr("class", "bar-label").merge(labels)
+      .transition().duration(300)
+      .attr("x", d => xVal(rename(d.partner)) + xVal.bandwidth() / 2)
+      .attr("y", d => yVal(d.value) - 5)
+      .attr("text-anchor", "middle")
+      .text(d => d.value.toLocaleString())
+      .attr("font-size", "16px");
+    labels.exit().remove();
+    gVal.select(".x.axis").call(d3.axisBottom(xVal))
+      .selectAll("text").style("font-size", "12px")
+      .attr("font-weight", "bold");
+    gVal.select(".y.axis").call(d3.axisLeft(yVal))
+      .selectAll("text").style("font-size", "12px")
+      .attr("font-weight", "bold");
+    gVal.selectAll(".chart-title").remove();
+    gVal.append("text").attr("class", "chart-title")
+      .attr("x", 0).attr("y", -20)
+      .text(`${currentRep} — Top 10 Export Destination Countries (USD)`);
+  }
+
+  function updatePrice(arr) {
+    const top5 = pad5(arr.slice(0, 10));
+    const rename = name => name === "Other Asia, nes" ? "Other Asia" : name;
+    xP.domain(top5.map(d => rename(d.partner)));
+    yP.domain([0, d3.max(top5, d => d.unitPrice)]);
+    const bars = gP.selectAll(".bar").data(top5, d => d.partner);
+    bars.enter().append("rect").attr("class", "bar").merge(bars)
+      .transition().duration(300)
+      .attr("x", d => xP(rename(d.partner)))
+      .attr("width", xP.bandwidth())
+      .attr("y", d => yP(d.unitPrice))
+      .attr("height", d => cH - yP(d.unitPrice))
+      .attr("fill", reporterInfo[currentRep].color);
+    bars.exit().remove();
+    const labels = gP.selectAll(".bar-label").data(top5, d => d.partner);
+    labels.enter().append("text").attr("class", "bar-label").merge(labels)
+      .transition().duration(300)
+      .attr("x", d => xP(rename(d.partner)) + xP.bandwidth() / 2)
+      .attr("y", d => yP(d.unitPrice) - 5)
+      .attr("text-anchor", "middle")
+      .text(d => d.unitPrice.toFixed(1));
+    labels.exit().remove();
+    gP.select(".x.axis").call(d3.axisBottom(xP))
+      .selectAll("text").style("font-size", "12px")
+      .attr("font-weight", "bold");
+    gP.select(".y.axis").call(d3.axisLeft(yP))
+      .selectAll("text").style("font-size", "12px")
+      .attr("font-weight", "bold");
+    gP.selectAll(".chart-title").remove();
+    gP.append("text").attr("class", "chart-title")
+      .attr("x", 0).attr("y", -20)
+      .text("Unit Price by Country (USD/kg)");
+  }
+
+  function updateBars(rep) {
+    currentRep = rep;
+    const ps = reportersData.find(r => r.reporter === rep).partners;
+    updateVal(ps);
+    updatePrice(ps);
+  }
+
+  updateBars("Thailand");
+}
+</script>
+
+
+
+
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    // For code content inside modals, clipBoardJS needs to be initialized with a container option
+    // TODO: Check when it could be a function (https://github.com/zenorocha/clipboard.js/issues/860)
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+<p>© 🌸 2025 DSAN5200 Spring Visualization</p>
+</div>   
+    <div class="nav-footer-center">
+<p>Built by ☕️ Group9</p>
+</div>
+    <div class="nav-footer-right">
+<p><a href="https://github.com/gu-dsan5200/dsan5200-spring2025-project-group-09.git">GitHub 🔗</a></p>
+</div>
+  </div>
+</footer>
+
+
+
+
+</body></html>

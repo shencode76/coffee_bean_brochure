@@ -1,0 +1,220 @@
+```{=html}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/roughjs@4.5.1/bundled/rough.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 40px;
+    }
+    .container {
+      display: flex;
+      gap: 40px;
+    }
+    #bubble-container {
+      flex: 1;
+      position: relative;
+    }
+    #hover-info-bubble {
+      position: absolute;
+      background-color: white;
+      border: 1px solid #ccc;
+      padding: 8px;
+      display: none;
+      pointer-events: none;
+      font-size: 12px;
+      width: 260px;
+    }
+    .highlight-group {
+      background-color: #e6f4ea;
+      border-radius: 6px;
+      padding: 2px 4px;
+      margin-right: 4px;
+    }
+    .highlighted-link {
+      font-weight: 500;
+      text-decoration: underline dotted;
+      cursor: pointer;
+    }
+    .highlight-group a {
+      text-decoration: none;
+      font-weight: normal;
+      margin-left: 2px;
+    }
+    .highlight-group:hover {
+      background-color: #cde3d5;
+    }
+  </style>
+</head>
+<body>
+
+<h2 style="font-size: 28px; font-weight: bold;">What People Talk About Most When It Comes to Coffee? <a href="#">🔗</a></h2>
+<hr/>
+
+<div class="container">
+  <div id="bubble-container">
+    <div id="hover-info-bubble"></div>
+  </div>
+
+  <div style="font-family: 'Comic Sans MS', sans-serif; font-size: 15px; line-height: 1.6;">
+    <p><strong>Coffee isn't just a beverage</strong>—it’s a language. Online, people talk about coffee in ways that reveal their personal rituals, preferences, and emotions…</p>
+
+    <p>Among the most frequently mentioned themes are 
+      <span class="highlight-group" data-category="flavor">
+        <span class="highlighted-link">flavor experiences</span><a href="https://www.google.com/search?q=coffee+flavor+experiences" target="_blank">🔗</a>
+      </span>,
+      <span class="highlight-group" data-category="type">
+        <span class="highlighted-link">espresso-based drinks</span><a href="https://www.google.com/search?q=espresso-based+drinks" target="_blank">🔗</a>
+      </span>,
+      <span class="highlight-group" data-category="brew">
+        <span class="highlighted-link">aeropress</span><a href="https://www.google.com/search?q=aeropress" target="_blank">🔗</a>
+      </span>,
+      <span class="highlight-group" data-category="origin">
+        <span class="highlighted-link">Colombia</span><a href="https://www.google.com/search?q=colombia+coffee" target="_blank">🔗</a>
+      </span>, and more.
+    </p>
+
+    <p>This packed bubble chart visualizes the most common keywords from Reddit discussions about coffee. Bubble size reflects frequency, and color shows category— 
+      <span class="highlight-group" data-category="flavor"><span class="highlighted-link">flavor</span><a href="#">🔗</a></span>, 
+      <span class="highlight-group" data-category="type"><span class="highlighted-link">type</span><a href="#">🔗</a></span>, 
+      <span class="highlight-group" data-category="brew"><span class="highlighted-link">brew</span><a href="#">🔗</a></span>, or 
+      <span class="highlight-group" data-category="origin"><span class="highlighted-link">origin</span><a href="#">🔗</a></span>.
+    </p>
+
+    <p><strong>How to use the chart:</strong> Hover over the highlighted words to spotlight related bubbles. Click a bubble to search that keyword on Google.</p>
+  </div>
+</div>
+
+<script>
+  const width = 600;
+  const height = 600;
+
+  const morandiPalette = {
+    flavor: ['#F28CA6', '#E6B2BA', '#FFE3E3', '#FF8A8A','#F7B5CA','#EDDFE0'],
+    type:   ['#F39E60', '#FFE6A9', '#FFD09B', '#FFB38E'],
+    brew:   ['#C5D3E8', '#BAC5D1', '#CAD6DE','#D4F6FF'],
+    origin: ['#95D2B3', '#CADABF', '#ACE1AF','#BFF6C3']
+  };
+
+  d3.json("website/visualization/data/bubble_with_descriptions.json").then(data => {
+    const svg = d3.select("#bubble-container")
+      .append("svg")
+      .attr("width", width)
+      .attr("height", height);
+
+    const tooltip = d3.select("#hover-info-bubble");
+
+    const pack = d3.pack().size([width, height]).padding(4);
+    const root = d3.hierarchy(data)
+      .sum(d => d.value)
+      .sort((a, b) => b.value - a.value);
+    pack(root);
+
+    const colorMap = {};
+    const counters = {};
+    root.leaves().forEach(d => {
+      const cat = d.data.category;
+      counters[cat] = (counters[cat] || 0);
+      const palette = morandiPalette[cat] || ["#ccc"];
+      colorMap[d.data.name] = palette[counters[cat] % palette.length];
+      counters[cat] += 1;
+      d.originalX = d.x;
+      d.originalY = d.y;
+    });
+
+    const node = svg.selectAll("g")
+      .data(root.leaves())
+      .join("g")
+      .attr("transform", d => `translate(${d.x},${d.y})`)
+      .attr("data-category", d => d.data.category)
+      .attr("data-name", d => d.data.name);
+
+    const rc = window.rough.svg(svg.node());
+
+    node.each(function (d) {
+      const roughCircle = rc.circle(0, 0, 2 * d.r, {
+        stroke: "black",
+        fill: colorMap[d.data.name],
+        fillStyle: "cross-hatch",
+        fillWeight: 1.5,
+        hachureAngle: 60,
+        hachureGap: 4
+      });
+      d3.select(this).node().appendChild(roughCircle);
+    });
+
+    node.append("text")
+      .text(d => d.data.name)
+      .attr("dy", "0.35em")
+      .attr("text-anchor", "middle")
+      .style("font-size", d => Math.max(10, d.r / 3) + "px")
+      .style("fill", "black")
+      .style("font-family", "Comic Sans MS, sans-serif")
+      .style("pointer-events", "none");
+
+    node.on("mouseover", function (event, d) {
+      d3.select(this)
+        .raise()
+        .transition()
+        .duration(300)
+        .attr("transform", `translate(${d.originalX}, ${d.originalY - 10}) scale(1.15)`);
+
+      d3.select(this).select("text")
+        .transition()
+        .duration(300)
+        .style("font-size", Math.max(10, d.r / 2.2) + "px")
+        .style("font-weight", "bold");
+
+      tooltip
+        .style("display", "block")
+        .html(`<strong>${d.data.name}</strong><br/>
+               <b>Category:</b> ${d.data.category}<br/>
+               <b>Mentions:</b> ${d.data.value}<br/>
+               <b>Sentiment:</b> ${(d.data.avg_sentiment ?? "N/A").toFixed(2)}<br/>
+               <i>${d.data.description ?? ""}</i>`)
+        .style("left", (event.pageX + 10) + "px")
+        .style("top", (event.pageY - 20) + "px");
+    })
+    .on("mouseout", function (event, d) {
+      d3.select(this)
+        .transition()
+        .duration(300)
+        .attr("transform", `translate(${d.originalX}, ${d.originalY}) scale(1)`);
+
+      d3.select(this).select("text")
+        .transition()
+        .duration(300)
+        .style("font-size", Math.max(10, d.r / 3) + "px")
+        .style("font-weight", "normal");
+
+      tooltip.style("display", "none");
+    })
+    .on("click", function (event, d) {
+      const keyword = encodeURIComponent(d.data.name);
+      window.open(`https://www.google.com/search?q=coffee+${keyword}`, '_blank');
+    });
+
+    // Hover from text to dim unrelated bubbles
+    d3.selectAll(".highlight-group").on("mouseover", function () {
+      const cat = this.dataset.category;
+      svg.selectAll("g")
+        .transition()
+        .duration(200)
+        .style("opacity", function () {
+          return this.getAttribute("data-category") === cat ? "1" : "0.2";
+        });
+    }).on("mouseout", function () {
+      svg.selectAll("g")
+        .transition()
+        .duration(200)
+        .style("opacity", "1");
+    });
+  });
+</script>
+
+</body>
+</html>
+```
