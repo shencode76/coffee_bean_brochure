@@ -1,0 +1,150 @@
+---
+title: "GEO_VISUAL"
+subtitle: "data preprocessing"
+
+jupyter: python3
+fig-format: png
+---
+
+## with year 
+
+```{python}
+import pandas as pd
+import plotly.express as px
+
+def draw_year_country_fig(final_year_country_clean): 
+    custom_colors = [
+    '#FF8A8A', '#f1f43d', '#536dac', '#95D2B3',  # High contrast base colors
+    '#FFE6A9', '#75bd42', '#0ac8f5', '#F28CA6',  # Secondary contrast
+    '#FFB38E', '#CAD6DE', '#BFF6C3', '#8EDAFF',  # Tertiary
+    '#FFD09B', '#BAC5D1', '#CADABF', '#F7B5CA',  # Quaternary
+    '#FFE3E3', '#EDDFE0'                         # Light backups
+    ]
+
+    final_year_country_clean["Processing.Method"] = (
+        final_year_country_clean["Processing.Method"]
+        .fillna("Unknown")
+        .str.strip()
+    )
+
+
+    valid_years = (
+        final_year_country_clean[final_year_country_clean["Processing.Method"] != "Unknown"]
+        ["Harvest.Year"]
+        .dropna()
+        .unique()
+    )
+    valid_years = sorted(valid_years, reverse=True)
+
+
+    initial_year = valid_years[-1]
+    initial_data = final_year_country_clean[final_year_country_clean["Harvest.Year"] == initial_year]
+    fig = px.choropleth(
+        initial_data,
+        locations="iso_alpha",
+        color="Processing.Method",
+        hover_name="Country.of.Origin",
+        color_discrete_sequence= custom_colors,  #px.colors.qualitative.Set3,
+        title=f"Coffee Processing Methods by Country in {int(initial_year)}",
+        projection="natural earth",
+        hover_data={
+            "Harvest.Year": True, 
+            "Processing.Method": True,
+            'Average_Aroma': True,
+            'Average_Flavor': True,
+            'Average_Aftertaste': True,
+            'Average_Acidity': True, 
+            'Average_Balance': True,
+            'Average_Sweetness': True,
+            'Average_Clean.Cup': True,
+        }
+    )
+
+
+    traces = []
+    for year in valid_years:
+        trace_fig = px.choropleth(
+            final_year_country_clean[final_year_country_clean["Harvest.Year"] == year],
+            locations="iso_alpha",
+            color="Processing.Method",
+            hover_name="Country.of.Origin",
+            color_discrete_sequence= custom_colors,
+#px.colors.qualitative.Set3,
+            projection="natural earth",
+            hover_data={
+                "Harvest.Year": True, 
+                "Processing.Method": True,
+                'Average_Aroma': True,
+                'Average_Flavor': True,
+                'Average_Aftertaste': True,
+                'Average_Acidity': True, 
+                'Average_Balance': True,
+                'Average_Sweetness': True,
+                'Average_Clean.Cup': True,
+            }
+        )
+        traces.append(trace_fig.data)
+
+
+    fig.data = []  
+    for i, trace_list in enumerate(traces):
+        for trace in trace_list:
+            trace.visible = (i == 0)  
+            fig.add_trace(trace)
+
+
+
+    total_traces = sum(len(t) for t in traces)
+
+    buttons = []
+    start_idx = 0
+    for i, year in enumerate(valid_years):
+        n = len(traces[i])  
+        visibility = [False] * total_traces
+        for j in range(start_idx, start_idx + n):
+            visibility[j] = True
+        start_idx += n
+
+        buttons.append(dict(
+            label=str(int(year)),
+            method="update",
+            args=[
+                {"visible": visibility},
+                {"title": f"Coffee Processing Methods by Country in {int(year)}"}
+            ]
+        ))
+
+    fig.update_layout(
+        updatemenus=[dict(
+            buttons=buttons,
+            direction="down",
+            showactive=True,
+            x=0.8,
+            xanchor="center",
+            y=1.05,
+            yanchor="bottom"
+        )],
+    
+    )
+
+    fig.show()
+
+```
+
+
+```{python}
+final_arabica_df= pd.read_csv("../data/year_arabica_geo.csv")
+
+print(len(final_arabica_df)) 
+display(final_arabica_df.head()) 
+draw_year_country_fig(final_arabica_df)
+```
+
+
+```{python}
+final_robusta_df= pd.read_csv("../data/year_robusta_geo.csv")
+
+print(len(final_robusta_df)) 
+display(final_robusta_df.head()) 
+draw_year_country_fig(final_robusta_df)
+```

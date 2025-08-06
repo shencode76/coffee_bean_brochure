@@ -1,0 +1,139 @@
+---
+title: "GEO_VISUAL"
+subtitle: "data preprocessing"
+
+jupyter: python3
+fig-format: png
+---
+
+```{python}
+import pandas as pd 
+import numpy as np
+import plotly as plt 
+import plotly.express as px
+from iso3166 import countries_by_name 
+
+def clean_year(year):
+    year = str(year).strip()
+    year_digits = ''.join(filter(str.isdigit, year))
+    return year_digits if len(year_digits) == 4 else np.nan
+
+
+def seperate_year_data(df): 
+    df["Country.of.Origin"] = df["Country.of.Origin"].replace("Taiwan", "China")
+    df["Harvest.Year"] = df["Harvest.Year"].astype(str).apply(lambda x: x.replace("-", "/"))
+    df["Harvest.Year"] = df["Harvest.Year"].apply(lambda x: x.split("/"))
+    df.dropna(subset=["Harvest.Year"], inplace=True)
+    df = df.explode("Harvest.Year").reset_index(drop=True) 
+
+    df['Harvest.Year'] = df['Harvest.Year'].apply(clean_year)
+    df['Harvest.Year'] = pd.to_numeric(df['Harvest.Year'], errors='coerce')
+    df = df[df['Harvest.Year'] > 2000]
+    return df
+ 
+def get_iso3(country_name):
+    # the dataset is without Longitude and latitude, we need to locate by country name
+    try:
+        return countries_by_name[country_name].alpha3
+    except KeyError:
+        return None  # Handle missing countries 
+
+def format_iso_df(df):
+    beans_quality_df = df[['Country.of.Origin','Mill', 'Harvest.Year', 'Variety','Processing.Method', 'Aroma',
+        'Flavor', 'Aftertaste', 'Acidity','Balance', 'Uniformity','Clean.Cup', 'Sweetness', 'Cupper.Points', 'Total.Cup.Points',
+        'Moisture', 'Category.One.Defects', 'Quakers', 
+        'Category.Two.Defects']]
+    beans_quality_df.fillna(value={'Processing.Method': "Unknown"}, inplace=True)
+    beans_quality_df.reset_index(inplace=True, drop=True) 
+    beans_quality_df["Country.of.Origin"] = beans_quality_df["Country.of.Origin"].str.upper()
+    beans_quality_df["iso_alpha"] = beans_quality_df["Country.of.Origin"].apply(get_iso3)
+    return beans_quality_df
+ 
+def format_year_country_flavor(beans_quality_df): 
+    beans_quality_df = beans_quality_df.groupby(["iso_alpha", 'Country.of.Origin', "Processing.Method", "Harvest.Year"])[
+        ["Aroma", "Flavor", "Aftertaste", "Acidity",   "Balance", "Sweetness", "Clean.Cup"
+    ]].mean().round(3).reset_index()
+    
+    coffee_quality_attributes = [
+        "Aroma", "Flavor", "Aftertaste", "Acidity", "Balance", "Sweetness", "Clean.Cup"
+    ]
+
+    rename_dict = {col: f"Average_{col}" for col in coffee_quality_attributes}
+    beans_quality_df = beans_quality_df.rename(columns=rename_dict)
+    print(len(beans_quality_df))
+
+    beans_quality_df.dropna(inplace=True)  
+
+    return beans_quality_df
+
+```
+
+
+## For Arabica Coffee Beans 
+### Seperate unformatted years to single rows, and explode them
+
+```{python}
+# Load the Excel file
+arabica_df = pd.read_excel("../data/arabica_final.xlsx", index_col=0)
+
+after_year_clean_arabica_df = seperate_year_data(arabica_df)
+# Display the cleaned and filtered result
+print(after_year_clean_arabica_df['Harvest.Year'].unique()) 
+after_year_clean_arabica_df.to_csv("../data/arabica_year_clean.csv", index=False)
+```
+
+## For Robusta Coffee Beans 
+### Seperate unformatted years to single rows, and explode them
+
+```{python}
+# Load the Excel file
+robusta_df = pd.read_excel("../data/robusta_final.xlsx", index_col=0)
+robusta_df.rename(columns={'Fragrance...Aroma':'Aroma', 
+    'Salt...Acid': 'Acidity',  
+    'Bitter...Sweet':'Sweetness', 
+    'Uniform.Cup': 'Uniformity'}, inplace=True) 
+
+after_year_clean_robusta_df = seperate_year_data(robusta_df)
+# Display the cleaned and filtered result
+print(after_year_clean_robusta_df['Harvest.Year'].unique()) 
+after_year_clean_robusta_df.to_csv("../data/robusta_year_clean.csv", index=False)
+```
+
+
+## For Arabica Coffee Beans 
+### matching country names to ISO code
+```{python}
+beans_quality_clean_arabica_df = format_iso_df(after_year_clean_arabica_df)
+# Drop rows with missing ISO codes
+# beans_quality_df = beans_quality_df.dropna(subset=["iso_alpha"])
+beans_quality_clean_arabica_df.head()
+print(len(beans_quality_clean_arabica_df))
+
+
+final_arabica_df = format_year_country_flavor(beans_quality_clean_arabica_df)
+
+final_arabica_df.to_csv("../data/year_arabica_geo.csv", index=False)
+
+print(len(final_arabica_df)) 
+display(final_arabica_df.head())  
+```
+
+## For Robusta Coffee Beans 
+### matching country names to ISO code
+
+```{python}
+beans_quality_clean_robusta_df = format_iso_df(after_year_clean_robusta_df)
+# Drop rows with missing ISO codes
+# beans_quality_df = beans_quality_df.dropna(subset=["iso_alpha"])
+beans_quality_clean_robusta_df.head()
+print(len(beans_quality_clean_robusta_df))
+
+
+final_robusta_df = format_year_country_flavor(beans_quality_clean_robusta_df)
+
+final_robusta_df.to_csv("../data/year_robusta_geo.csv", index=False)
+
+print(len(final_robusta_df)) 
+display(final_robusta_df.head()) 
+
+```
